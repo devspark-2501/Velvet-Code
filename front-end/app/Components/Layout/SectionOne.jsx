@@ -1,6 +1,15 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+
+const TYPEWRITER_PHRASES = [
+    "Meaningful Impact.",
+    "We Build Sites.",
+    "Magnificent Work.",
+    "Crafted For You.",
+    "Scalable Products.",
+    "Your Vision, Live.",
+];
 
 export default function SectionOne() {
     const cursorRef = useRef(null);
@@ -9,6 +18,47 @@ export default function SectionOne() {
     const smoothMouse = useRef({ x: 0, y: 0 });
     const rafRef = useRef(null);
 
+    // ── Typewriter state ──
+    const [displayed, setDisplayed] = useState("");
+    const [phraseIndex, setPhraseIndex] = useState(0);
+    const [charIndex, setCharIndex] = useState(0);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [isPaused, setIsPaused] = useState(false);
+
+    useEffect(() => {
+        if (isPaused) return;
+
+        const currentPhrase = TYPEWRITER_PHRASES[phraseIndex];
+
+        const timeout = setTimeout(() => {
+            if (!isDeleting) {
+                // Typing forward
+                setDisplayed(currentPhrase.slice(0, charIndex + 1));
+                setCharIndex((prev) => prev + 1);
+
+                if (charIndex + 1 === currentPhrase.length) {
+                    setIsPaused(true);
+                    setTimeout(() => {
+                        setIsPaused(false);
+                        setIsDeleting(true);
+                    }, 1800);
+                }
+            } else {
+                // Deleting
+                setDisplayed(currentPhrase.slice(0, charIndex - 1));
+                setCharIndex((prev) => prev - 1);
+
+                if (charIndex - 1 === 0) {
+                    setIsDeleting(false);
+                    setPhraseIndex((prev) => (prev + 1) % TYPEWRITER_PHRASES.length);
+                }
+            }
+        }, isDeleting ? 42 : 72);
+
+        return () => clearTimeout(timeout);
+    }, [charIndex, isDeleting, phraseIndex, isPaused, displayed]);
+
+    // ── Canvas grid ──
     useEffect(() => {
         const canvas = canvasRef.current;
         const ctx = canvas.getContext("2d");
@@ -33,7 +83,6 @@ export default function SectionOne() {
             const cols = Math.ceil(W / CELL) + 1;
             const rows = Math.ceil(H / CELL) + 1;
 
-            // Vertical lines
             for (let c = 0; c <= cols; c++) {
                 const x = c * CELL;
                 let maxT = 0;
@@ -49,7 +98,6 @@ export default function SectionOne() {
                 ctx.stroke();
             }
 
-            // Horizontal lines
             for (let r = 0; r <= rows; r++) {
                 const y = r * CELL;
                 let maxT = 0;
@@ -65,7 +113,6 @@ export default function SectionOne() {
                 ctx.stroke();
             }
 
-            // Intersection dots
             for (let c = 0; c <= cols; c++) {
                 for (let r = 0; r <= rows; r++) {
                     const x = c * CELL;
@@ -84,14 +131,9 @@ export default function SectionOne() {
 
         const onMove = (e) => {
             const rect = root.getBoundingClientRect();
-            mouse.current = {
-                x: e.clientX - rect.left,
-                y: e.clientY - rect.top,
-            };
+            mouse.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
         };
-        const onLeave = () => {
-            mouse.current = { x: -9999, y: -9999 };
-        };
+        const onLeave = () => { mouse.current = { x: -9999, y: -9999 }; };
 
         const loop = () => {
             smoothMouse.current.x = lerp(smoothMouse.current.x, mouse.current.x, 0.07);
@@ -147,7 +189,10 @@ export default function SectionOne() {
 
                             <h1 className="hero-heading">
                                 Elegant Code.<br />
-                                <span className="hero-heading-accent">Meaningful</span> Impact.
+                                <span className="hero-heading-accent">
+                                    {displayed}
+                                    <span className="typewriter-cursor" />
+                                </span>
                             </h1>
 
                             <p className="hero-subtext">
@@ -344,10 +389,31 @@ export default function SectionOne() {
                     line-height: 1.1;
                     color: #1a1033;
                     letter-spacing: -1.5px;
+                    /* Reserve height so layout doesn't jump as text changes */
+                    min-height: 2.4em;
                 }
 
+                /* ── TYPEWRITER ACCENT ── */
                 .hero-heading-accent {
                     color: #6d28d9;
+                    display: inline-block;
+                    min-width: 2ch;
+                }
+
+                .typewriter-cursor {
+                    display: inline-block;
+                    width: 3px;
+                    height: 0.85em;
+                    background: #6d28d9;
+                    margin-left: 3px;
+                    vertical-align: middle;
+                    border-radius: 2px;
+                    animation: cursorBlink 0.75s step-end infinite;
+                }
+
+                @keyframes cursorBlink {
+                    0%, 100% { opacity: 1; }
+                    50%      { opacity: 0; }
                 }
 
                 .hero-subtext {
@@ -492,7 +558,8 @@ export default function SectionOne() {
                 @media (prefers-reduced-motion: reduce) {
                     .orb-1, .orb-2, .orb-3,
                     .hero-logo-wrap,
-                    .badge-dot { animation: none; }
+                    .badge-dot,
+                    .typewriter-cursor { animation: none; }
                 }
             `}</style>
         </>
