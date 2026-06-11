@@ -1,356 +1,500 @@
 "use client";
+
 import { useEffect, useRef } from "react";
-import Image from "next/image";
 
 export default function SectionOne() {
-  const canvasRef = useRef(null);
-  const animRef = useRef(null);
+    const cursorRef = useRef(null);
+    const canvasRef = useRef(null);
+    const mouse = useRef({ x: -9999, y: -9999 });
+    const smoothMouse = useRef({ x: 0, y: 0 });
+    const rafRef = useRef(null);
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    let t = 0;
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext("2d");
+        const root = canvas.parentElement;
 
-    function resize() {
-      canvas.width = canvas.offsetWidth * window.devicePixelRatio;
-      canvas.height = canvas.offsetHeight * window.devicePixelRatio;
-      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-    }
-    resize();
-    window.addEventListener("resize", resize);
+        let W, H;
+        const CELL = 52;
+        const GLOW_R = 240;
 
-    function drawRibbon(time) {
-      const w = canvas.offsetWidth;
-      const h = canvas.offsetHeight;
-      ctx.clearRect(0, 0, w, h);
+        const resize = () => {
+            W = root.offsetWidth;
+            H = root.offsetHeight;
+            canvas.width = W;
+            canvas.height = H;
+        };
 
-      const cx = w / 2;
-      const cy = h / 2 - 10;
-      const R = Math.min(w, h) * 0.32;
-      const ribbonWidth = R * 0.22;
-      const loops = 2;
-      const steps = 300;
+        const lerp = (a, b, t) => a + (b - a) * t;
 
-      // Outer glow shadow
-      ctx.save();
-      ctx.shadowColor = "rgba(120, 60, 255, 0.55)";
-      ctx.shadowBlur = 60;
+        const drawGrid = (mx, my) => {
+            ctx.clearRect(0, 0, W, H);
 
-      for (let i = 0; i < steps; i++) {
-        const frac = i / steps;
-        const angle = frac * Math.PI * 2 * loops + time * 0.6;
-        const wobble = Math.sin(frac * Math.PI * 4 + time * 1.2) * 0.18;
-        const r = R * (0.82 + wobble);
+            const cols = Math.ceil(W / CELL) + 1;
+            const rows = Math.ceil(H / CELL) + 1;
 
-        const x = cx + r * Math.cos(angle);
-        const y = cy + r * Math.sin(angle) * 0.55; // perspective flatten
+            // Vertical lines
+            for (let c = 0; c <= cols; c++) {
+                const x = c * CELL;
+                let maxT = 0;
+                for (let r = 0; r <= rows; r++) {
+                    const dist = Math.hypot(x - mx, r * CELL - my);
+                    maxT = Math.max(maxT, Math.max(0, 1 - dist / GLOW_R));
+                }
+                ctx.strokeStyle = `rgba(109,40,217,${0.065 + maxT * 0.38})`;
+                ctx.lineWidth = 0.5 + maxT * 0.8;
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, H);
+                ctx.stroke();
+            }
 
-        // Perpendicular for ribbon width
-        const nextFrac = (i + 1) / steps;
-        const nextAngle = nextFrac * Math.PI * 2 * loops + time * 0.6;
-        const nextWobble = Math.sin(nextFrac * Math.PI * 4 + time * 1.2) * 0.18;
-        const nextR = R * (0.82 + nextWobble);
-        const nx = cx + nextR * Math.cos(nextAngle);
-        const ny = cy + nextR * Math.sin(nextAngle) * 0.55;
+            // Horizontal lines
+            for (let r = 0; r <= rows; r++) {
+                const y = r * CELL;
+                let maxT = 0;
+                for (let c = 0; c <= cols; c++) {
+                    const dist = Math.hypot(c * CELL - mx, y - my);
+                    maxT = Math.max(maxT, Math.max(0, 1 - dist / GLOW_R));
+                }
+                ctx.strokeStyle = `rgba(109,40,217,${0.065 + maxT * 0.38})`;
+                ctx.lineWidth = 0.5 + maxT * 0.8;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(W, y);
+                ctx.stroke();
+            }
 
-        const dx = nx - x;
-        const dy = ny - y;
-        const len = Math.sqrt(dx * dx + dy * dy) || 1;
-        const px = (-dy / len) * ribbonWidth;
-        const py = (dx / len) * ribbonWidth;
+            // Intersection dots
+            for (let c = 0; c <= cols; c++) {
+                for (let r = 0; r <= rows; r++) {
+                    const x = c * CELL;
+                    const y = r * CELL;
+                    const dist = Math.hypot(x - mx, y - my);
+                    const t = Math.max(0, 1 - dist / (GLOW_R * 0.65));
+                    if (t > 0.04) {
+                        ctx.beginPath();
+                        ctx.arc(x, y, 1.2 + t * 2.4, 0, Math.PI * 2);
+                        ctx.fillStyle = `rgba(139,92,246,${t * 0.72})`;
+                        ctx.fill();
+                    }
+                }
+            }
+        };
 
-        // Depth-based color — lighter at top of loop, darker at bottom
-        const depth = Math.sin(angle) * 0.5 + 0.5;
-        const alpha = 0.55 + depth * 0.45;
+        const onMove = (e) => {
+            const rect = root.getBoundingClientRect();
+            mouse.current = {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top,
+            };
+        };
+        const onLeave = () => {
+            mouse.current = { x: -9999, y: -9999 };
+        };
 
-        // Purple gradient across the ribbon face
-        const grad = ctx.createLinearGradient(
-          x - px, y - py, x + px, y + py
-        );
-        grad.addColorStop(0, `rgba(80, 30, 200, ${alpha * 0.7})`);
-        grad.addColorStop(0.3, `rgba(130, 60, 255, ${alpha})`);
-        grad.addColorStop(0.7, `rgba(170, 90, 255, ${alpha})`);
-        grad.addColorStop(1, `rgba(80, 20, 180, ${alpha * 0.6})`);
+        const loop = () => {
+            smoothMouse.current.x = lerp(smoothMouse.current.x, mouse.current.x, 0.07);
+            smoothMouse.current.y = lerp(smoothMouse.current.y, mouse.current.y, 0.07);
 
-        ctx.beginPath();
-        ctx.moveTo(x - px, y - py);
-        ctx.lineTo(x + px, y + py);
-        ctx.lineTo(nx + px, ny + py);
-        ctx.lineTo(nx - px, ny - py);
-        ctx.closePath();
-        ctx.fillStyle = grad;
-        ctx.fill();
-      }
-      ctx.restore();
+            if (cursorRef.current) {
+                cursorRef.current.style.transform = `translate(${smoothMouse.current.x}px, ${smoothMouse.current.y}px)`;
+            }
 
-      // Pedestal / base shadow
-      const grd = ctx.createRadialGradient(cx, cy + R * 0.6, 4, cx, cy + R * 0.6, R * 0.55);
-      grd.addColorStop(0, "rgba(80, 40, 180, 0.45)");
-      grd.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.beginPath();
-      ctx.ellipse(cx, cy + R * 0.62, R * 0.5, R * 0.12, 0, 0, Math.PI * 2);
-      ctx.fillStyle = grd;
-      ctx.fill();
+            drawGrid(smoothMouse.current.x, smoothMouse.current.y);
+            rafRef.current = requestAnimationFrame(loop);
+        };
 
-      // Pedestal disc
-      const discGrad = ctx.createLinearGradient(cx - R * 0.38, cy + R * 0.56, cx + R * 0.38, cy + R * 0.72);
-      discGrad.addColorStop(0, "rgba(60,30,140,0.7)");
-      discGrad.addColorStop(0.5, "rgba(100,60,200,0.55)");
-      discGrad.addColorStop(1, "rgba(30,10,80,0.7)");
-      ctx.beginPath();
-      ctx.ellipse(cx, cy + R * 0.64, R * 0.36, R * 0.09, 0, 0, Math.PI * 2);
-      ctx.fillStyle = discGrad;
-      ctx.fill();
-    }
+        resize();
+        window.addEventListener("resize", resize);
+        root.addEventListener("mousemove", onMove);
+        root.addEventListener("mouseleave", onLeave);
+        rafRef.current = requestAnimationFrame(loop);
 
-    function animate() {
-      t += 0.012;
-      drawRibbon(t);
-      animRef.current = requestAnimationFrame(animate);
-    }
-    animate();
+        return () => {
+            cancelAnimationFrame(rafRef.current);
+            window.removeEventListener("resize", resize);
+            root.removeEventListener("mousemove", onMove);
+            root.removeEventListener("mouseleave", onLeave);
+        };
+    }, []);
 
-    return () => {
-      cancelAnimationFrame(animRef.current);
-      window.removeEventListener("resize", resize);
-    };
-  }, []);
+    return (
+        <>
+            {/* ── CURSOR FOLLOWER ── */}
+            <div className="cursor-follower" ref={cursorRef} />
 
-  return (
-    <section className="hero-section">
-      {/* BG blobs */}
-      <div className="blob blob-1" />
-      <div className="blob blob-2" />
+            <div className="page-root">
 
-      <div className="hero-inner">
-        {/* ── LEFT CONTENT ── */}
-        <div className="hero-left">
-          <p className="eyebrow">SOFTWARE. DESIGN. IMPACT.</p>
+                {/* ── GRID CANVAS ── */}
+                <canvas className="grid-canvas" ref={canvasRef} />
 
-          <h1 className="headline">
-            We code products<br />
-            that <span className="accent">create impact.</span>
-          </h1>
+                {/* ── AMBIENT ORBS ── */}
+                <div className="orb orb-1" />
+                <div className="orb orb-2" />
+                <div className="orb orb-3" />
 
-          <p className="subtext">
-            Velvet Code Co. is a digital studio crafting high-performance
-            software, beautiful designs, and seamless experiences
-            for ambitious brands and startups.
-          </p>
+                {/* ── HERO ── */}
+                <section className="hero-section">
+                    <div className="hero-container">
 
-          <div className="cta-row">
-            <a href="#work" className="btn-primary">
-              View Our Work <span className="arrow">→</span>
-            </a>
-            <a href="#services" className="btn-secondary">
-              Explore Services
-            </a>
-          </div>
+                        {/* Left */}
+                        <div className="hero-left">
+                            <div className="hero-badge">
+                                <span className="badge-dot" />
+                                We build digital experiences that scale
+                            </div>
 
-          <div className="trust-row">
-            <p className="trust-label">Trusted by innovative teams</p>
-            <div className="logos-row">
-              {["NEXORA", "lumina", "orbital", "FORMA", "STUDIO X"].map((name) => (
-                <span key={name} className="logo-pill">{name}</span>
-              ))}
+                            <h1 className="hero-heading">
+                                Elegant Code.<br />
+                                <span className="hero-heading-accent">Meaningful</span> Impact.
+                            </h1>
+
+                            <p className="hero-subtext">
+                                Velvet Code Co. is a design-driven development studio
+                                crafting fast, scalable and beautiful web experiences.
+                            </p>
+
+                            <div className="hero-cta-group">
+                                <a href="#" className="btn-primary">Explore Our Work →</a>
+                                <a href="#" className="btn-secondary">Let&apos;s Talk</a>
+                            </div>
+                        </div>
+
+                        {/* Right */}
+                        <div className="hero-right">
+                            <div className="hero-logo-wrap">
+                                <img
+                                    src="/asset/logo_one.png"
+                                    alt="Brand Logo"
+                                    className="hero-logo-img"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Trusted bar */}
+                    <div className="trusted-bar">
+                        <span className="trusted-label">Trusted by innovative teams</span>
+                        <img src="/asset/logo_two.png" alt="Trusted Partner" className="trusted-logo" />
+                    </div>
+                </section>
             </div>
-          </div>
-        </div>
 
-        {/* ── RIGHT CANVAS ── */}
-        <div className="hero-right">
-          <canvas ref={canvasRef} className="ribbon-canvas" />
-        </div>
-      </div>
+            <style>{`
+                *, *::before, *::after {
+                    box-sizing: border-box;
+                    margin: 0;
+                    padding: 0;
+                }
 
-      <style jsx>{`
-        .hero-section {
-          position: relative;
-          min-height: 100vh;
-          background: #05030f;
-          display: flex;
-          align-items: center;
-          overflow: hidden;
-          font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
-          padding: 0 clamp(1.5rem, 5vw, 6rem);
-        }
+                body {
+                    cursor: none;
+                    background: #faf8ff;
+                }
 
-        /* Ambient glow blobs */
-        .blob {
-          position: absolute;
-          border-radius: 50%;
-          filter: blur(100px);
-          pointer-events: none;
-          z-index: 0;
-        }
-        .blob-1 {
-          width: 520px; height: 420px;
-          background: radial-gradient(circle, rgba(90,40,220,0.28) 0%, transparent 70%);
-          top: -80px; left: -80px;
-        }
-        .blob-2 {
-          width: 460px; height: 400px;
-          background: radial-gradient(circle, rgba(110,50,240,0.18) 0%, transparent 70%);
-          bottom: -60px; right: 5%;
-        }
+                /* ── PAGE ROOT ── */
+                .page-root {
+                    position: relative;
+                    min-height: 100vh;
+                    background: #faf8ff;
+                    overflow: hidden;
+                    cursor: none;
+                }
 
-        .hero-inner {
-          position: relative;
-          z-index: 1;
-          width: 100%;
-          max-width: 1280px;
-          margin: 0 auto;
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          align-items: center;
-          gap: 2rem;
-          padding: 5rem 0 4rem;
-        }
+                /* ── GRID CANVAS ── */
+                .grid-canvas {
+                    position: absolute;
+                    inset: 0;
+                    z-index: 0;
+                    pointer-events: none;
+                    width: 100%;
+                    height: 100%;
+                }
 
-        /* ── LEFT ── */
-        .hero-left {
-          display: flex;
-          flex-direction: column;
-          gap: 1.4rem;
-        }
+                /* ── AMBIENT ORBS ── */
+                .orb {
+                    position: absolute;
+                    border-radius: 50%;
+                    pointer-events: none;
+                    z-index: 1;
+                    filter: blur(90px);
+                }
 
-        .eyebrow {
-          font-size: 0.72rem;
-          font-weight: 600;
-          letter-spacing: 0.18em;
-          color: #8b5cf6;
-          margin: 0;
-        }
+                .orb-1 {
+                    width: 600px;
+                    height: 600px;
+                    background: radial-gradient(circle, rgba(139,92,246,0.22), transparent 65%);
+                    top: -140px;
+                    right: -120px;
+                    animation: drift1 9s ease-in-out infinite alternate;
+                }
 
-        .headline {
-          margin: 0;
-          font-size: clamp(2.2rem, 4.2vw, 3.6rem);
-          font-weight: 800;
-          line-height: 1.12;
-          color: #f0eeff;
-          letter-spacing: -0.02em;
-        }
+                .orb-2 {
+                    width: 480px;
+                    height: 480px;
+                    background: radial-gradient(circle, rgba(192,168,255,0.16), transparent 65%);
+                    bottom: -100px;
+                    left: -80px;
+                    animation: drift2 11s ease-in-out infinite alternate;
+                }
 
-        .accent {
-          color: #7c3aed;
-        }
+                .orb-3 {
+                    width: 320px;
+                    height: 320px;
+                    background: radial-gradient(circle, rgba(220,210,255,0.14), transparent 65%);
+                    top: 38%;
+                    left: 42%;
+                    animation: drift3 7s ease-in-out infinite alternate;
+                }
 
-        .subtext {
-          margin: 0;
-          font-size: clamp(0.88rem, 1.2vw, 1rem);
-          line-height: 1.7;
-          color: #8b8aaa;
-          max-width: 420px;
-        }
+                @keyframes drift1 {
+                    0%   { transform: translate(0, 0) scale(1); }
+                    100% { transform: translate(-60px, 80px) scale(1.14); }
+                }
+                @keyframes drift2 {
+                    0%   { transform: translate(0, 0) scale(1); }
+                    100% { transform: translate(70px, -55px) scale(1.1); }
+                }
+                @keyframes drift3 {
+                    0%   { transform: translate(0, 0) scale(1); }
+                    100% { transform: translate(-50px, -65px) scale(1.2); }
+                }
 
-        /* CTA buttons */
-        .cta-row {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 0.9rem;
-          align-items: center;
-        }
+                /* ── CURSOR FOLLOWER ── */
+                .cursor-follower {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 380px;
+                    height: 380px;
+                    margin-left: -190px;
+                    margin-top: -190px;
+                    border-radius: 50%;
+                    pointer-events: none;
+                    z-index: 9999;
+                    background: radial-gradient(circle, rgba(210,190,255,0.2) 0%, rgba(160,120,255,0.08) 45%, transparent 70%);
+                    filter: blur(6px);
+                    mix-blend-mode: screen;
+                    will-change: transform;
+                }
 
-        .btn-primary {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.5rem;
-          background: #6d28d9;
-          color: #fff;
-          text-decoration: none;
-          padding: 0.75rem 1.6rem;
-          border-radius: 8px;
-          font-size: 0.92rem;
-          font-weight: 600;
-          transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
-          box-shadow: 0 4px 24px rgba(109,40,217,0.38);
-        }
-        .btn-primary:hover {
-          background: #7c3aed;
-          transform: translateY(-2px);
-          box-shadow: 0 8px 32px rgba(109,40,217,0.55);
-        }
-        .arrow { font-size: 1.1em; }
+                /* ── HERO ── */
+                .hero-section {
+                    position: relative;
+                    z-index: 2;
+                    min-height: 100vh;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: center;
+                    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+                }
 
-        .btn-secondary {
-          display: inline-flex;
-          align-items: center;
-          color: #d4cfff;
-          text-decoration: none;
-          padding: 0.75rem 1.6rem;
-          border-radius: 8px;
-          font-size: 0.92rem;
-          font-weight: 600;
-          border: 1.5px solid rgba(160,130,255,0.28);
-          background: rgba(255,255,255,0.03);
-          transition: border-color 0.2s, background 0.2s, transform 0.15s;
-        }
-        .btn-secondary:hover {
-          border-color: rgba(160,130,255,0.55);
-          background: rgba(109,40,217,0.1);
-          transform: translateY(-2px);
-        }
+                .hero-container {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    padding: 80px 80px 40px;
+                    max-width: 1280px;
+                    margin: 0 auto;
+                    width: 100%;
+                    gap: 40px;
+                }
 
-        /* Trust */
-        .trust-row { display: flex; flex-direction: column; gap: 0.65rem; }
-        .trust-label {
-          margin: 0;
-          font-size: 0.76rem;
-          color: #55536e;
-          letter-spacing: 0.04em;
-        }
-        .logos-row {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 1.2rem;
-          align-items: center;
-        }
-        .logo-pill {
-          font-size: 0.72rem;
-          font-weight: 700;
-          letter-spacing: 0.1em;
-          color: #5e5a7a;
-          transition: color 0.2s;
-        }
-        .logo-pill:hover { color: #a78bfa; }
+                /* ── LEFT ── */
+                .hero-left {
+                    flex: 0 0 480px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 24px;
+                }
 
-        /* ── RIGHT CANVAS ── */
-        .hero-right {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          height: 100%;
-        }
+                .hero-badge {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 8px;
+                    background: rgba(255,255,255,0.88);
+                    border: 1px solid #e5e0f5;
+                    border-radius: 999px;
+                    padding: 6px 14px;
+                    font-size: 13px;
+                    color: #4b4b6b;
+                    width: fit-content;
+                    backdrop-filter: blur(8px);
+                    box-shadow: 0 1px 8px rgba(109,40,217,0.07);
+                }
 
-        .ribbon-canvas {
-          width: 100%;
-          height: clamp(320px, 48vw, 540px);
-          display: block;
-        }
+                .badge-dot {
+                    width: 7px;
+                    height: 7px;
+                    background: #7c3aed;
+                    border-radius: 50%;
+                    flex-shrink: 0;
+                    animation: badgePulse 2.4s ease-in-out infinite;
+                }
 
-        /* ── RESPONSIVE ── */
-        @media (max-width: 900px) {
-          .hero-inner {
-            grid-template-columns: 1fr;
-            padding: 4rem 0 3rem;
-            gap: 0;
-          }
-          .hero-right {
-            order: -1;
-          }
-          .ribbon-canvas {
-            height: clamp(260px, 55vw, 360px);
-          }
-          .subtext { max-width: 100%; }
-        }
+                @keyframes badgePulse {
+                    0%, 100% { opacity: 1; transform: scale(1); }
+                    50%      { opacity: 0.45; transform: scale(0.7); }
+                }
 
-        @media (max-width: 520px) {
-          .hero-section { padding: 0 1.25rem; }
-          .cta-row { flex-direction: column; align-items: flex-start; }
-          .btn-primary, .btn-secondary { width: 100%; justify-content: center; }
-        }
-      `}</style>
-    </section>
-  );
+                .hero-heading {
+                    font-size: clamp(34px, 4vw, 58px);
+                    font-weight: 800;
+                    line-height: 1.1;
+                    color: #1a1033;
+                    letter-spacing: -1.5px;
+                }
+
+                .hero-heading-accent {
+                    color: #6d28d9;
+                }
+
+                .hero-subtext {
+                    font-size: 16px;
+                    line-height: 1.75;
+                    color: #6b7280;
+                    max-width: 400px;
+                }
+
+                .hero-cta-group {
+                    display: flex;
+                    align-items: center;
+                    gap: 14px;
+                    flex-wrap: wrap;
+                }
+
+                .btn-primary {
+                    background: #6d28d9;
+                    color: #fff;
+                    padding: 13px 28px;
+                    border-radius: 10px;
+                    font-size: 15px;
+                    font-weight: 600;
+                    text-decoration: none;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 6px;
+                    transition: background 0.2s, transform 0.15s;
+                }
+                .btn-primary:hover {
+                    background: #5b21b6;
+                    transform: translateY(-2px);
+                }
+
+                .btn-secondary {
+                    background: rgba(255,255,255,0.88);
+                    color: #1a1033;
+                    padding: 13px 28px;
+                    border-radius: 10px;
+                    font-size: 15px;
+                    font-weight: 600;
+                    text-decoration: none;
+                    border: 1.5px solid #e5e0f5;
+                    backdrop-filter: blur(8px);
+                    transition: border-color 0.2s, transform 0.15s;
+                }
+                .btn-secondary:hover {
+                    border-color: #7c3aed;
+                    transform: translateY(-2px);
+                }
+
+                /* ── RIGHT — BIG CLEAN LOGO ── */
+                .hero-right {
+                    flex: 1;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+
+                .hero-logo-wrap {
+                    width: clamp(360px, 44vw, 600px);
+                    height: clamp(360px, 44vw, 600px);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    animation: floatLogo 5s ease-in-out infinite;
+                }
+
+                @keyframes floatLogo {
+                    0%, 100% { transform: translateY(0px); }
+                    50%       { transform: translateY(-14px); }
+                }
+
+                .hero-logo-img {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: contain;
+                }
+
+                /* ── TRUSTED BAR ── */
+                .trusted-bar {
+                    border-top: 1px solid rgba(237,233,248,0.85);
+                    padding: 20px 80px;
+                    max-width: 1280px;
+                    margin: 0 auto;
+                    width: 100%;
+                    display: flex;
+                    align-items: center;
+                    gap: 32px;
+                }
+
+                .trusted-label {
+                    font-size: 13px;
+                    color: #9ca3af;
+                    white-space: nowrap;
+                    font-weight: 500;
+                }
+
+                .trusted-logo {
+                    height: 30px;
+                    width: auto;
+                    object-fit: contain;
+                    opacity: 0.5;
+                    filter: grayscale(30%);
+                    transition: opacity 0.2s, filter 0.2s;
+                }
+                .trusted-logo:hover {
+                    opacity: 1;
+                    filter: none;
+                }
+
+                /* ── RESPONSIVE ── */
+                @media (max-width: 960px) {
+                    .hero-container {
+                        flex-direction: column-reverse;
+                        padding: 50px 32px 30px;
+                        gap: 30px;
+                        text-align: center;
+                    }
+                    .hero-left {
+                        flex: unset;
+                        align-items: center;
+                        max-width: 100%;
+                    }
+                    .hero-subtext { max-width: 100%; }
+                    .hero-logo-wrap {
+                        width: clamp(240px, 62vw, 360px);
+                        height: clamp(240px, 62vw, 360px);
+                    }
+                    .trusted-bar { padding: 16px 32px; flex-wrap: wrap; gap: 16px; }
+                }
+
+                @media (max-width: 480px) {
+                    .hero-container { padding: 40px 20px 24px; }
+                    .hero-logo-wrap { width: 230px; height: 230px; }
+                    .hero-cta-group { flex-direction: column; width: 100%; }
+                    .btn-primary,
+                    .btn-secondary { width: 100%; justify-content: center; }
+                    .trusted-bar { padding: 14px 20px; }
+                }
+
+                @media (prefers-reduced-motion: reduce) {
+                    .orb-1, .orb-2, .orb-3,
+                    .hero-logo-wrap,
+                    .badge-dot { animation: none; }
+                }
+            `}</style>
+        </>
+    );
 }
