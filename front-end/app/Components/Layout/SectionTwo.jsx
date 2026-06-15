@@ -36,7 +36,7 @@ export default function SectionTwo() {
           const dist = Math.hypot(x - mx, r * CELL - my);
           maxT = Math.max(maxT, Math.max(0, 1 - dist / GLOW_R));
         }
-        ctx.strokeStyle = `rgba(109,40,217,${0.055 + maxT * 0.32})`;
+        ctx.strokeStyle = `rgba(109,40,217,${0.065 + maxT * 0.38})`;
         ctx.lineWidth = 0.5 + maxT * 0.8;
         ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
       }
@@ -48,7 +48,7 @@ export default function SectionTwo() {
           const dist = Math.hypot(c * CELL - mx, y - my);
           maxT = Math.max(maxT, Math.max(0, 1 - dist / GLOW_R));
         }
-        ctx.strokeStyle = `rgba(109,40,217,${0.055 + maxT * 0.32})`;
+        ctx.strokeStyle = `rgba(109,40,217,${0.065 + maxT * 0.38})`;
         ctx.lineWidth = 0.5 + maxT * 0.8;
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
       }
@@ -61,7 +61,7 @@ export default function SectionTwo() {
           if (t > 0.04) {
             ctx.beginPath();
             ctx.arc(x, y, 1.2 + t * 2.4, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(139,92,246,${t * 0.7})`;
+            ctx.fillStyle = `rgba(139,92,246,${t * 0.72})`;
             ctx.fill();
           }
         }
@@ -229,11 +229,10 @@ export default function SectionTwo() {
       <style>{`
         .s2-root {
           position: relative;
-          background: #faf8ff;
+          background: #05030f;
           overflow: hidden;
           font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
         }
-
         .s2-grid-canvas {
           position: absolute;
           inset: 0;
@@ -242,7 +241,6 @@ export default function SectionTwo() {
           z-index: 0;
           pointer-events: none;
         }
-
         .s2-wrap {
           position: relative;
           z-index: 2;
@@ -253,16 +251,12 @@ export default function SectionTwo() {
           flex-direction: column;
           gap: 6rem;
         }
-
-        /* ── BLOCK LAYOUT ── */
         .s2-block {
           display: grid;
           grid-template-columns: 260px 1fr;
           gap: 3rem;
           align-items: start;
         }
-
-        /* ── LEFT COLUMN ── */
         .s2-eyebrow {
           display: inline-flex;
           align-items: center;
@@ -270,7 +264,7 @@ export default function SectionTwo() {
           font-size: 0.65rem;
           font-weight: 700;
           letter-spacing: 0.18em;
-          color: #6d28d9;
+          color: #8b5cf6;
           text-transform: uppercase;
           margin-bottom: 0.9rem;
         }
@@ -278,20 +272,20 @@ export default function SectionTwo() {
           content: '';
           display: block;
           width: 3px; height: 13px;
-          background: #6d28d9;
+          background: #7c3aed;
           border-radius: 2px;
         }
         .s2-block-title {
           font-size: clamp(1.75rem, 2.6vw, 2.4rem);
           font-weight: 800;
-          color: #1a1033;
+          color: #eeeaff;
           line-height: 1.15;
           letter-spacing: -0.025em;
           margin: 0 0 0.9rem;
         }
         .s2-block-desc {
           font-size: 0.9rem;
-          color: #7b7a9a;
+          color: #6b6890;
           line-height: 1.72;
           margin: 0 0 1.4rem;
         }
@@ -301,7 +295,7 @@ export default function SectionTwo() {
           gap: 5px;
           font-size: 0.83rem;
           font-weight: 600;
-          color: #6d28d9;
+          color: #8b5cf6;
           text-decoration: none;
           transition: gap 0.2s;
         }
@@ -311,15 +305,14 @@ export default function SectionTwo() {
         .s2-service-cards {
           display: grid;
           grid-template-columns: repeat(4, 1fr);
-          border: 1px solid #ece8f8;
+          border: 1px solid #ffffff08;
           border-radius: 16px;
           overflow: hidden;
-          background: #ece8f8;
+          background: #ffffff08;
           gap: 1px;
-          box-shadow: 0 2px 24px rgba(109,40,217,0.06);
         }
         .s2-svc-card {
-          background: #faf8ff;
+          background: #08060f;
           padding: 1.7rem 1.4rem;
           display: flex;
           flex-direction: column;
@@ -333,34 +326,33 @@ export default function SectionTwo() {
           position: absolute;
           bottom: 0; left: 1.4rem; right: 1.4rem;
           height: 2px;
-          background: #6d28d9;
+          background: #7c3aed;
           border-radius: 2px 2px 0 0;
           transform: scaleX(0);
           transform-origin: left;
           transition: transform 0.28s ease;
         }
-        .s2-svc-card:hover { background: #f3f0fd; }
+        .s2-svc-card:hover { background: #0e0a1c; }
         .s2-svc-card:hover::after { transform: scaleX(1); }
-
         .s2-svc-icon {
           width: 40px; height: 40px;
           border-radius: 10px;
-          background: #ede9fe;
-          border: 1px solid #ddd6fe;
+          background: #12103a;
+          border: 1px solid #2a1f6e;
           display: flex;
           align-items: center;
           justify-content: center;
-          color: #6d28d9;
+          color: #8b5cf6;
         }
         .s2-svc-title {
           font-size: 0.92rem;
           font-weight: 700;
-          color: #1a1033;
+          color: #e4e0ff;
           margin: 0;
         }
         .s2-svc-desc {
           font-size: 0.8rem;
-          color: #7b7a9a;
+          color: #6b6890;
           line-height: 1.6;
           margin: 0;
           flex: 1;
@@ -368,7 +360,7 @@ export default function SectionTwo() {
         .s2-svc-link {
           font-size: 0.78rem;
           font-weight: 600;
-          color: #6d28d9;
+          color: #8b5cf6;
           text-decoration: none;
           display: inline-flex;
           align-items: center;
@@ -386,23 +378,21 @@ export default function SectionTwo() {
         .s2-proj-card {
           border-radius: 14px;
           overflow: hidden;
-          border: 1px solid #ece8f8;
-          background: #fff;
+          border: 1px solid #ffffff0a;
+          background: #08060f;
           display: flex;
           flex-direction: column;
           transition: transform 0.22s, box-shadow 0.22s;
-          box-shadow: 0 2px 12px rgba(109,40,217,0.05);
         }
         .s2-proj-card:hover {
           transform: translateY(-5px);
-          box-shadow: 0 16px 40px rgba(109,40,217,0.14);
+          box-shadow: 0 16px 40px rgba(109,40,217,0.2);
         }
         .s2-proj-visual {
           width: 100%;
           aspect-ratio: 16/10;
           overflow: hidden;
           display: block;
-          background: #0a0614;
         }
         .s2-proj-body {
           padding: 1rem 1.15rem 1.25rem;
@@ -418,28 +408,28 @@ export default function SectionTwo() {
         .s2-proj-title {
           font-size: 0.88rem;
           font-weight: 700;
-          color: #1a1033;
+          color: #ddd8ff;
           margin: 0;
         }
         .s2-proj-tag {
           font-size: 0.62rem;
           font-weight: 700;
           letter-spacing: 0.07em;
-          color: #6d28d9;
-          background: #ede9fe;
-          border: 1px solid #ddd6fe;
+          color: #8b5cf6;
+          background: #1e1040;
+          border: 1px solid #3b1f8c;
           padding: 0.18rem 0.5rem;
           border-radius: 20px;
         }
         .s2-proj-desc {
           font-size: 0.77rem;
-          color: #8b8aaa;
+          color: #5a5778;
           margin: 0;
         }
         .s2-proj-link {
           font-size: 0.77rem;
           font-weight: 600;
-          color: #6d28d9;
+          color: #8b5cf6;
           text-decoration: none;
           display: inline-flex;
           align-items: center;
@@ -449,7 +439,6 @@ export default function SectionTwo() {
         }
         .s2-proj-link:hover { gap: 8px; }
 
-        /* ── RESPONSIVE ── */
         @media (max-width: 1024px) {
           .s2-service-cards { grid-template-columns: repeat(2, 1fr); }
           .s2-proj-cards { grid-template-columns: repeat(2, 1fr); }
@@ -465,19 +454,16 @@ export default function SectionTwo() {
         <canvas ref={canvasRef} className="s2-grid-canvas" />
 
         <div className="s2-wrap">
-
           {/* ── SERVICES ── */}
           <div className="s2-block">
             <div>
               <p className="s2-eyebrow">What We Do</p>
               <h2 className="s2-block-title">From idea to impactful product</h2>
               <p className="s2-block-desc">
-                We partner with startups and businesses to design, build and
-                scale digital products that users love.
+                We partner with startups and businesses to design, build and scale digital products that users love.
               </p>
               <a href="#services" className="s2-more-link">View all services →</a>
             </div>
-
             <div className="s2-service-cards">
               {services.map((s) => (
                 <div key={s.title} className="s2-svc-card">
@@ -496,12 +482,10 @@ export default function SectionTwo() {
               <p className="s2-eyebrow">Featured Work</p>
               <h2 className="s2-block-title">Digital products we&apos;re proud of</h2>
               <p className="s2-block-desc">
-                We help brands and startups launch digital experiences that
-                drive real results.
+                We help brands and startups launch digital experiences that drive real results.
               </p>
               <a href="#work" className="s2-more-link">View all projects →</a>
             </div>
-
             <div className="s2-proj-cards">
               {projects.map((p) => (
                 <div key={p.title} className="s2-proj-card">
@@ -518,7 +502,6 @@ export default function SectionTwo() {
               ))}
             </div>
           </div>
-
         </div>
       </div>
     </>
