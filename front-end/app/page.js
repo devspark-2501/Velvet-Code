@@ -3,6 +3,7 @@ import SectionTwo from "./Components/Layout/SectionTwo";
 
 export default function Home() {
   return (
+    
     <div>
       <SectionOne /> {/* Section One, exist here*/}
 
