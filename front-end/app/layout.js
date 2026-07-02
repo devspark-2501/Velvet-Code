@@ -1,4 +1,5 @@
 import NavBar from "./Components/Sections/NavBar";
+
 import "./globals.css";
 
 export const metadata = {
